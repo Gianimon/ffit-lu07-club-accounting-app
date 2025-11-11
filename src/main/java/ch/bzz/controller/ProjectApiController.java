@@ -5,6 +5,7 @@ import ch.bzz.ProjectRepository;
 import ch.bzz.generated.api.ProjectApi;
 import ch.bzz.generated.model.LoginProject200Response;
 import ch.bzz.generated.model.LoginRequest;
+import ch.bzz.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +22,12 @@ import java.util.Optional;
 public class ProjectApiController implements ProjectApi {
     private ProjectRepository projectRepository;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    private final JwtUtil jwtUtil;
+
     @Autowired
-    public ProjectApiController(ProjectRepository projectRepository) {
+    public ProjectApiController(ProjectRepository projectRepository, JwtUtil jwtUtil) {
         this.projectRepository = projectRepository;
+        this.jwtUtil = jwtUtil;
     }
 
     @Override
@@ -49,6 +53,13 @@ public class ProjectApiController implements ProjectApi {
 
     @Override
     public ResponseEntity<LoginProject200Response> loginProject(LoginRequest loginRequest) {
-        return null;
+        Project project = projectRepository.findByProjectName(loginRequest.getProjectName()).get(0);
+        if (project != null && encoder.matches(loginRequest.getPassword(), project.getPasswordHash())) {
+            String token =  jwtUtil.generateToken(loginRequest.getProjectName());
+            LoginProject200Response loginProject200Response = new LoginProject200Response();
+            loginProject200Response.setAccessToken(token);
+            return ResponseEntity.ok(loginProject200Response);
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
 }
