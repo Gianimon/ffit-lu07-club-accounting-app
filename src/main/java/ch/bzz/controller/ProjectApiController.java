@@ -20,7 +20,6 @@ import java.util.Optional;
 
 @Slf4j
 @RestController
-@RequestMapping("api")
 public class ProjectApiController implements ProjectApi {
     private ProjectRepository projectRepository;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
@@ -57,7 +56,12 @@ public class ProjectApiController implements ProjectApi {
 
     @Override
     public ResponseEntity<LoginProject200Response> loginProject(LoginRequest loginRequest) {
-        Project project = projectRepository.findByProjectName(loginRequest.getProjectName()).get(0);
+        Optional<Project> optionalProject = projectRepository.findById(loginRequest.getProjectName());
+        if (optionalProject.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        }
+        Project project = optionalProject.get();
+        // Project project = projectRepository.findByProjectName(loginRequest.getProjectName()).get();
         if (project != null && encoder.matches(loginRequest.getPassword(), project.getPasswordHash())) {
             String token =  jwtUtil.generateToken(loginRequest.getProjectName());
             LoginProject200Response loginProject200Response = new LoginProject200Response();
